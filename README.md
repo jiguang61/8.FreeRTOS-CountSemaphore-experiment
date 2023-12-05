@@ -1,3 +1,2 @@
-# 5.FreeRTOS-Queue-experiment-2
-极光的FREERTOS实验5
-通过队列来进行互斥量的模拟。
+极光的FREERTOS实验7
+二值信号量实验，二值信号量在使用时很像裸机的全局FLAG；
