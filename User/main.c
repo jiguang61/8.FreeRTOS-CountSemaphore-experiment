@@ -1,8 +1,8 @@
 /**
     极光的FreeRTOS实验
     使用开发版野火的STM32F429系列开发板
-    实验7-信号量实验
-    时间：23/12/5
+    实验8-计数型信号量实验
+    时间：23/12/6
   ******************************************************************************
   */
 #include "stm32f4xx.h"
@@ -21,7 +21,7 @@ TaskHandle_t Receive_Task_Handle = NULL;
 TaskHandle_t Send_Task_Handle = NULL;
 
 /*************************内核句柄创建********************************/
-SemaphoreHandle_t BinarySem_Flag_Handle = NULL;
+SemaphoreHandle_t CountSem_Flag_Handle = NULL;
 
 /****************************函数声明********************************/
 static void AppTaskCreate(void);
@@ -48,7 +48,7 @@ int main(void)
     
     LED_RGBOFF;
     
-    printf("FreeRTOS实验7,信号量实验，作者极光\n");
+    printf("FreeRTOS实验8,计数信号量实验，作者极光\n");
     
     //创建用来创建任务的任务
     xReturn = xTaskCreate((TaskFunction_t )AppTaskCreate,			/* 任务入口函数 */
@@ -83,20 +83,20 @@ static void AppTaskCreate(void)
     /*开启临界段保护*/
     taskENTER_CRITICAL();
 
-    /*创建一个二值信号量*/ 
-    BinarySem_Flag_Handle = xSemaphoreCreateBinary();
+    /*创建一个计数信号量*/ 
+    CountSem_Flag_Handle = xSemaphoreCreateCounting(5,0);
 
     /*验证*/ 
-    if( BinarySem_Flag_Handle != NULL )
+    if( CountSem_Flag_Handle != NULL )
     {
-        printf("二值信号量创建成功\n");
+        printf("计数信号量创建成功\n");
     }
     
     //创建接收任务
     xReturn = xTaskCreate((TaskFunction_t )Receive_Test_Task,   /* 任务入口函数 */
                         (const char*	)"Receive_Test_Task",	/* 任务名字 */
                         (uint16_t		)512,					/* 任务栈大小 */
-                        (void*			)"正在运行接受函数",       /* 任务入口函数参数 */
+                        (void*			)"正在运行接受函数",    /* 任务入口函数参数 */
                         (UBaseType_t	)2,                     /* 任务的优先级 */
                         (TaskHandle_t*	)&Receive_Task_Handle); /* 任务控制块指针 */
     
@@ -133,13 +133,21 @@ static void Receive_Test_Task(void * param)
     BaseType_t xReturn = pdPASS;
     while(1)
     {
-        /*获取二值信号量 xSemaphore,没获取到则一直等待*/
-        xReturn = xSemaphoreTake(BinarySem_Flag_Handle,portMAX_DELAY); 
-        if(pdTRUE == xReturn)
+        /*K2被按下*/
+        if( Key_Scan(KEY2_GPIO_PORT,KEY2_PIN) == KEY_ON )
         {
-            printf("二值信号量获取成功!\r\n");
-            LED2_TOGGLE;
-        }
+            /*获取计数信号量 xSemaphore,不等待*/
+            xReturn = xSemaphoreTake(CountSem_Flag_Handle,0); 
+            if( xReturn == pdTRUE )
+            {
+                printf("信号量获取成功!\r\n");
+            }
+            else
+            {
+                printf("信号量获取失败，当前信号量队列为满!\r\n");
+            }
+        } 
+
         vTaskDelay(20);
     }
 }
@@ -153,15 +161,15 @@ void Send_Test_Task(void * param)
         /*K1被按下*/
         if( Key_Scan(KEY1_GPIO_PORT,KEY1_PIN) == KEY_ON )
         {
-            /*给出二值信号量*/
-            xReturn = xSemaphoreGive( BinarySem_Flag_Handle );
+            /*给出计数信号量*/
+            xReturn = xSemaphoreGive( CountSem_Flag_Handle );
             if( xReturn == pdTRUE )
             {
-                printf("二值信号量释放成功!\r\n");
+                printf("信号量释放成功!\r\n");
             }
             else
             {
-                printf("二值信号量释放失败!\r\n");
+                printf("信号量释放失败，当前信号量队列为空!\r\n");
             }
         } 
         /*延时20个tick*/
